@@ -21,3 +21,5 @@ def notify_user(listings, email_address):
     # Here you would implement the logic to send an email with the HTML table
     # For example, using smtplib or any email-sending service
     print(f"Sending email to {email_address} with the following listings:\n{html_table}")
+
+    
