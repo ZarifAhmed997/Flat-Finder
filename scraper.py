@@ -1,11 +1,14 @@
-import csv
-import random
 from bs4 import BeautifulSoup
 from math import radians, cos, sin, asin, sqrt
+from run import random_delay
+
 import requests
 import re
 import pandas as pd
-import time
+import os
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.width', None)
 
 class Scraper:
     def __init__(self, max_price, beds, search_url):
@@ -22,14 +25,14 @@ class Scraper:
         return self.base_url
     
     def paginate_url(self, url, page_number):
-        return None if not url else f"{self.search_url}&page={page_number}" if "?" in url else f"{url}?page={page_number}"
+        return None if not url else f"{url}&page={page_number}" if "?" in url else f"{url}?page={page_number}"
     
     def scrape_page(self, url):
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raise an error for bad responses
 
-            time.sleep(random.random() * 0.2 + 0.05) # Delay between server requests to not get banned for DDOSing
+            random_delay(0.05, 0.2)
 
             soup = BeautifulSoup(response.text, 'html.parser')
             return soup
@@ -40,19 +43,19 @@ class Scraper:
 
     def scrape_website(self, url):
         page_number = 1
-        url = self.paginate_url(url, page_number)
+        new_url = self.paginate_url(url, page_number)
         soups = []
 
         while True:
             try:
-                response = requests.get(url)
+                response = requests.get(new_url)
 
                 if response.url == self.base_url:
                     return soups 
 
                 response.raise_for_status()  # Raise an error for bad responses
 
-                time.sleep(random.random() * 0.2 + 0.05) # Delay between server requests to not get banned for DDOSing
+                random_delay(0.05, 0.2)
 
                 soup = BeautifulSoup(response.text, 'html.parser')
                 
@@ -64,7 +67,7 @@ class Scraper:
                 return None
             
             page_number += 1
-            url = self.paginate_url(url, page_number)
+            new_url = self.paginate_url(url, page_number)
 
     def sort_listings(self):
         self.listings = sorted(self.listings, key=lambda x: x['bathrooms'], reverse=True)
@@ -72,7 +75,7 @@ class Scraper:
         self.listings = sorted(self.listings, key=lambda x: x['price'], reverse=False)
 
     def get_postcode_coordinates(self, postcode):
-            POSTCODE_COORDINATES_CSV = '/Users/zarif/Documents/python/Flat-Finder/NSPL_MAY_2025_UK_EH.csv'  # Path to your CSV file with postcode coordinates
+            POSTCODE_COORDINATES_CSV = 'data/NSPL_MAY_2025_UK_EH.csv'  # Path to your CSV file with postcode coordinates
             df = pd.read_csv(POSTCODE_COORDINATES_CSV)  # Assuming you have a CSV file with postcode coordinates
             row = df[df['pcd'] == postcode]
             
@@ -99,13 +102,19 @@ class Scraper:
         distance = self.measure_distance(central_location, postcode)
         return distance <= max_distance_km 
     
+    def get_dataframe(self):
+        df = pd.DataFrame(self.listings)
+        return df
+    
     def save_to_csv(self, filename):
         if self.listings:
-            keys = self.listings[0].keys()
-            with open(filename, 'w', newline='', encoding='utf-8') as output_file:
-                dict_writer = csv.DictWriter(output_file, fieldnames=keys)
-                dict_writer.writeheader()
-                dict_writer.writerows(self.listings)
+            listings = pd.DataFrame(self.listings)
+            # Ensure property_id is stored as a string to match scraped IDs
+            if 'property_id' in listings.columns:
+                listings['property_id'] = listings['property_id'].astype(str)
+            tmp = filename + '.tmp'
+            listings.to_csv(tmp, index=False)
+            os.replace(tmp, filename)
 
 
 class UniHomesScraper(Scraper):

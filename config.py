@@ -1,13 +1,12 @@
-GMAIL_ADRESS = "zarifinzarif@gmail.com"
-GMAIL_PASSWORD = ""
-NOTIFY_EMAILS = ["your_email@example.com"]
-INTERVAL = 15 # minutes
+GMAIL_ADDRESS = "your_email@domain.com"
+GMAIL_PASSWORD = "your_app_password_for_email"
+NOTIFY_EMAILS = ["email1@domain.com", "email2@domain.com"]
+INTERVAL = 15 # How often the scraper will find new flats in minutes
 
-MAX_PRICE = 200 # GBP
+MAX_PRICE = 200 # Maximum rental price of flat per week in GBP
 BEDS = 3
 MOVE_IN_DATE = "2026-08-12"  # Format: YYYY-MM-DD
 CENTRAL_LOCATION = (55.943421, -3.190731)  # Example: Central Edinburgh coordinates (latitude, longitude)
+MAXIMUM_DISTANCE = 2 # Maximum distance of scraped flats from the central location in km
 
-# Replace with your actual search URLs
-SEARCH_WEBSITES = []
-LISTINGS_CSV_FILE = "filtered_listings.csv"
+LISTINGS_CSV_FILE = "data/filtered_listings.csv" # Directory in which flat listing information goes to (recommended not to change)

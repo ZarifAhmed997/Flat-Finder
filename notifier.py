@@ -1,25 +1,40 @@
 import pandas as pd
-import requests
 import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from config import LISTINGS_CSV_FILE
 
-from config import GMAIL_ADRESS, GMAIL_PASSWORD, LISTINGS_CSV_FILE
+class Notifier:
+    def __init__(self, email, password, recipients):
+        self.email = email
+        self.password = password
+        self.recipients = recipients
 
-def get_listings_from_csv(csv_file=LISTINGS_CSV_FILE):
-    try:
-        df = pd.read_csv(csv_file)
-        return df
-    except Exception as e:
-        print(f"Error reading CSV file: {e}")
-        return None
+    def notify_users(self, listing_ids, listings):
 
-def notify_user(listings, email_address):
-    df = pd.DataFrame(listings)
-    
-    # Create a simple HTML table from the DataFrame
-    html_table = df.to_html(index=False, escape=False)
-    
-    # Here you would implement the logic to send an email with the HTML table
-    # For example, using smtplib or any email-sending service
-    print(f"Sending email to {email_address} with the following listings:\n{html_table}")
+        new_listings = listings[listings['property_id'].isin(listing_ids)]
+        new_listings = new_listings[['url','title','price','availability','bathrooms','bills_included','postcode']]
 
-    
+        msg = MIMEMultipart()
+        msg["From"] = self.email
+        msg["To"] = ", ".join(self.recipients)
+        msg["Subject"] = "New flat found!"
+
+        html_table = new_listings.to_html(index=False, border=1)
+        html_body = f"""
+            <html>
+                <body>
+                    <p>New listings found: </p>
+                    {html_table}
+                </body>
+            </html>
+        """
+
+        msg.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(self.email, self.password)
+            server.send_message(msg)
+
+        print(f"Sending notification to {', '.join(self.recipients)} with the following listings: \n{new_listings['url'].to_string(index=False)}")
+
