@@ -1,4 +1,5 @@
 data/filtered_listings.csv
 __pycache__
 .vscode
-.config.py
+aws_ssh.pem
+config.py
