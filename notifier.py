@@ -33,7 +33,12 @@ class Notifier:
         msg.attach(MIMEText(html_body, "html"))
 
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(self.email, self.password)
+            try:
+                server.login(self.email, self.password)
+            except smtplib.SMTPAuthenticationError:
+                print('Credentials are wrong in config.py')
+                return
+
             server.send_message(msg)
 
         print(f"Sending notification to {', '.join(self.recipients)} with the following listings: \n{new_listings['url'].to_string(index=False)}")

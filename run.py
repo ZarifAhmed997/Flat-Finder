@@ -30,45 +30,56 @@ def random_delay(lower_bound, upper_bound):
     time.sleep(random.random() *(upper_bound - lower_bound) + lower_bound)
 
 def main():
-    from scraper import UniHomesScraper
+    from scraper import UniHomesScraper, DJAlexanderScraper
     from notifier import Notifier
 
     # Create an instance of the scraper with the specified parameters
-    scraper = UniHomesScraper(MAX_PRICE, BEDS)
+    scrapers = [UniHomesScraper(MAX_PRICE, BEDS), DJAlexanderScraper(MAX_PRICE, BEDS)]
     notifier = Notifier(GMAIL_ADDRESS, GMAIL_PASSWORD, NOTIFY_EMAILS)
     listing_ids = get_old_listings()
 
     while True:
-        # Scrape listings based on the search URLs
         print("Scraping flat listings...")
         print()
 
-        scraper.extract_listings()
+        all_listings = []
 
-        print(f'Scraped {len(scraper.get_listings())} total listings in {scraper.get_url()}...')
+        for scraper in scrapers:
+            scraper.extract_listings()
+            print(f'Scraped {len(scraper.get_listings())} listings from {scraper.get_url()}')
 
-        scraper.filter_listings(max_price=MAX_PRICE, beds=BEDS, central_location=CENTRAL_LOCATION, hmo_required=True, max_distance_km=MAXIMUM_DISTANCE)
-        listings = scraper.get_listings()
+            scraper.filter_listings(
+                move_in_date=MOVE_IN_DATE,
+                central_location=CENTRAL_LOCATION,
+                hmo_required=True,
+                max_distance_km=MAXIMUM_DISTANCE
+            )
 
-        print(f"Found {len(listings)} listings after filtering")
+            all_listings.extend(scraper.get_listings())
+            print(f'Found {len(scraper.get_listings())} listings after filtering from {scraper.get_url()}')
 
-        # Save the filtered listings to a CSV file
-        scraper.save_to_csv(LISTINGS_CSV_FILE)
+        print(f'\nTotal listings across all scrapers: {len(all_listings)}')
 
-        print(f"Saved {len(listings)} listings to {LISTINGS_CSV_FILE}")
-        print()
-        print()
+        # Save combined listings to CSV
+        if all_listings:
+            import pandas as pd
+            df = pd.DataFrame(all_listings)
+            if 'property_id' in df.columns:
+                df['property_id'] = df['property_id'].astype(str)
+            tmp = LISTINGS_CSV_FILE + '.tmp'
+            df.to_csv(tmp, index=False)
+            os.replace(tmp, LISTINGS_CSV_FILE)
+            print(f'Saved {len(all_listings)} listings to {LISTINGS_CSV_FILE}')
 
-        # Notify the user with the filtered listings
-
-        new_listings = get_new_listings(listing_ids, listings)
-        
+        # Notify on new listings
+        new_listings = get_new_listings(listing_ids, all_listings)
         if new_listings:
-            notifier.notify_users(new_listings, scraper.get_dataframe())
+            notifier.notify_users(new_listings, pd.DataFrame(all_listings))
 
-        listing_ids = set([listing['property_id'] for listing in listings])
-        
-        random_delay(600, 1200)
+        listing_ids = set(listing['property_id'] for listing in all_listings)
+
+        print()
+        random_delay(INTERVAL * 48, INTERVAL * 72)
 
 if __name__ == "__main__":
     main()
